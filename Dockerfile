@@ -13,6 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+COPY start.sh .
+RUN chmod +x start.sh
+
 EXPOSE 8080
 
-CMD gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+CMD ["./start.sh"]
