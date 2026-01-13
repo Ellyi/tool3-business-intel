@@ -9,46 +9,35 @@ import json
 app = Flask(__name__)
 CORS(app)
 
-# Database connection
 def get_db_connection():
     return psycopg2.connect(
         host=os.getenv('DB_HOST'),
         database=os.getenv('DB_NAME'),
         user=os.getenv('DB_USER'),
         password=os.getenv('DB_PASSWORD'),
-        port=os.getenv('DB_PORT'),  # CRITICAL - never forget
+        port=os.getenv('DB_PORT'),
         cursor_factory=RealDictCursor
     )
 
 @app.route('/health', methods=['GET'])
 def health():
-    """Railway health check"""
     return jsonify({'status': 'healthy', 'service': 'Business Intelligence Auditor'})
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze():
-    """
-    Receives business intelligence questionnaire
-    Analyzes waste patterns
-    Returns audit results
-    """
     try:
         data = request.json
         
-        # Validate required fields
         required = ['company_name', 'industry', 'team_size', 'responses']
         for field in required:
             if field not in data:
                 return jsonify({'error': f'Missing: {field}'}), 400
         
-        # Generate session ID
         session_id = f"audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Analyze intelligence waste (will import from analyzer.py)
-        from backend.analyzer import analyze_intelligence_waste
+        from analyzer import analyze_intelligence_waste
         analysis = analyze_intelligence_waste(data['responses'])
         
-        # Save to database
         conn = get_db_connection()
         cur = conn.cursor()
         
@@ -70,7 +59,6 @@ def analyze():
         
         audit_id = cur.fetchone()['id']
         
-        # Save detailed waste zones
         for zone in analysis['waste_zones']:
             cur.execute("""
                 INSERT INTO audit_results (
@@ -89,8 +77,7 @@ def analyze():
         
         conn.commit()
         
-        # CIP: Log patterns for learning
-        from backend.cip_engine import CIPEngine
+        from cip_engine import CIPEngine
         cip = CIPEngine()
         cip.log_patterns({
             'industry': data['industry'],
@@ -107,7 +94,7 @@ def analyze():
             'audit_id': audit_id,
             'waste_score': analysis['waste_score'],
             'total_hours_wasted': analysis['total_hours_wasted'],
-            'waste_zones': analysis['waste_zones'][:3],  # Top 3 for preview
+            'waste_zones': analysis['waste_zones'][:3],
             'report_url': f'/api/report/{audit_id}'
         })
         
@@ -116,14 +103,10 @@ def analyze():
 
 @app.route('/api/report/<int:audit_id>', methods=['GET'])
 def get_report(audit_id):
-    """
-    Generates PDF report for completed audit
-    """
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Get audit with results
         cur.execute("""
             SELECT a.*, 
                    json_agg(json_build_object(
@@ -147,8 +130,7 @@ def get_report(audit_id):
         if not audit:
             return jsonify({'error': 'Audit not found'}), 404
         
-        # Generate PDF
-        from backend.report_generator import generate_pdf_report
+        from report_generator import generate_pdf_report
         pdf_path = generate_pdf_report(audit)
         
         return send_file(
@@ -163,12 +145,8 @@ def get_report(audit_id):
 
 @app.route('/api/cip/insights', methods=['GET'])
 def get_cip_insights():
-    """
-    CIP: Returns learning insights for Eli
-    Shows market opportunities from audit patterns
-    """
     try:
-        from backend.cip_engine import CIPEngine
+        from cip_engine import CIPEngine
         cip = CIPEngine()
         report = cip.generate_monthly_report()
         cip.close()
