@@ -47,3 +47,18 @@ CREATE INDEX IF NOT EXISTS idx_audits_score ON audits(intelligence_score);
 CREATE INDEX IF NOT EXISTS idx_results_audit ON audit_results(audit_id);
 CREATE INDEX IF NOT EXISTS idx_results_zone ON audit_results(waste_zone);
 CREATE INDEX IF NOT EXISTS idx_patterns_type ON audit_patterns(pattern_type);
+
+-- Sessions table for cross-tool intelligence
+CREATE TABLE IF NOT EXISTS sessions (
+    id SERIAL PRIMARY KEY,
+    session_id VARCHAR(255) UNIQUE NOT NULL,
+    audit_id INTEGER REFERENCES audits(id),
+    user_context JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '24 hours',
+    accessed_count INTEGER DEFAULT 0,
+    last_accessed TIMESTAMP
+);
+
+CREATE INDEX idx_session_id ON sessions(session_id);
+CREATE INDEX idx_expires_at ON sessions(expires_at);
