@@ -5,9 +5,9 @@ from psycopg2.extras import RealDictCursor
 import os
 from datetime import datetime
 import secrets
+import json
 from analyzer import analyze_intelligence_waste
 from cip_engine import CIPEngine
-# from report_generator import generate_pdf_report
 
 app = Flask(__name__)
 CORS(app)
@@ -52,9 +52,9 @@ def analyze():
         company_name,
         industry,
         team_size,
-        responses,
+        json.dumps(responses),
         analysis['waste_score'],
-        analysis
+        json.dumps(analysis)
     ))
     
     audit_id = cur.fetchone()['id']
@@ -92,7 +92,7 @@ def analyze():
     cur.execute("""
         INSERT INTO sessions (session_id, audit_id, user_context)
         VALUES (%s, %s, %s)
-    """, (session_id, audit_id, user_context))
+    """, (session_id, audit_id, json.dumps(user_context)))
     
     conn.commit()
     
@@ -147,24 +147,6 @@ def get_session(session_id):
     conn.close()
     
     return jsonify(session['user_context'])
-
-# @app.route('/api/report/<int:audit_id>', methods=['GET'])
-# def download_report(audit_id):
-   # conn = get_db()
-   # cur = conn.cursor(cursor_factory=RealDictCursor)
-    
-    #cur.execute("SELECT * FROM audits WHERE id = %s", (audit_id,))
-    #audit = cur.fetchone()
-    
-    #cur.execute("SELECT * FROM audit_results WHERE audit_id = %s", (audit_id,))
-    #results = cur.fetchall()
-    
-    #cur.close()
-    #conn.close()
-    
-    #pdf_path = generate_pdf_report(audit, results)
-    
-    return send_file(pdf_path, as_attachment=True, download_name=f'intelligence_audit_{audit_id}.pdf')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)))
