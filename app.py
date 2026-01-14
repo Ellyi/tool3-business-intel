@@ -7,7 +7,7 @@ from datetime import datetime
 import secrets
 from analyzer import analyze_intelligence_waste
 from cip_engine import CIPEngine
-from report_generator import generate_pdf_report
+# from report_generator import generate_pdf_report
 
 app = Flask(__name__)
 CORS(app)
@@ -148,21 +148,21 @@ def get_session(session_id):
     
     return jsonify(session['user_context'])
 
-@app.route('/api/report/<int:audit_id>', methods=['GET'])
-def download_report(audit_id):
-    conn = get_db()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+# @app.route('/api/report/<int:audit_id>', methods=['GET'])
+# def download_report(audit_id):
+   # conn = get_db()
+   # cur = conn.cursor(cursor_factory=RealDictCursor)
     
-    cur.execute("SELECT * FROM audits WHERE id = %s", (audit_id,))
-    audit = cur.fetchone()
+    #cur.execute("SELECT * FROM audits WHERE id = %s", (audit_id,))
+    #audit = cur.fetchone()
     
-    cur.execute("SELECT * FROM audit_results WHERE audit_id = %s", (audit_id,))
-    results = cur.fetchall()
+    #cur.execute("SELECT * FROM audit_results WHERE audit_id = %s", (audit_id,))
+    #results = cur.fetchall()
     
-    cur.close()
-    conn.close()
+    #cur.close()
+    #conn.close()
     
-    pdf_path = generate_pdf_report(audit, results)
+    #pdf_path = generate_pdf_report(audit, results)
     
     return send_file(pdf_path, as_attachment=True, download_name=f'intelligence_audit_{audit_id}.pdf')
 
