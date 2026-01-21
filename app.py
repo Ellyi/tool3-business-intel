@@ -148,5 +148,80 @@ def get_session(session_id):
     
     return jsonify(session['user_context'])
 
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    """Public stats endpoint for homepage CIP display"""
+    try:
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Total audits completed
+        cur.execute("SELECT COUNT(*) as total FROM audits")
+        total_audits = cur.fetchone()['total']
+        
+        # Average waste score
+        cur.execute("SELECT AVG(intelligence_score) as avg_score FROM audits")
+        avg_result = cur.fetchone()
+        avg_waste_score = float(avg_result['avg_score']) if avg_result['avg_score'] else 0
+        
+        # Total hours wasted identified
+        cur.execute("""
+            SELECT SUM((opportunities->>'total_hours_wasted')::integer) as total_hours
+            FROM audits
+            WHERE opportunities->>'total_hours_wasted' IS NOT NULL
+        """)
+        hours_result = cur.fetchone()
+        total_hours_wasted = int(hours_result['total_hours']) if hours_result['total_hours'] else 0
+        
+        # Top 3 waste zones
+        cur.execute("""
+            SELECT waste_zone, COUNT(*) as frequency, AVG(waste_score) as avg_score
+            FROM audit_results
+            GROUP BY waste_zone
+            ORDER BY frequency DESC
+            LIMIT 3
+        """)
+        top_zones = cur.fetchall()
+        
+        # Industry breakdown
+        cur.execute("""
+            SELECT industry, COUNT(*) as count, AVG(intelligence_score) as avg_score
+            FROM audits
+            WHERE industry IS NOT NULL
+            GROUP BY industry
+            ORDER BY count DESC
+            LIMIT 5
+        """)
+        industries = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'total_audits': total_audits,
+            'avg_waste_score': round(avg_waste_score, 1),
+            'total_hours_wasted': total_hours_wasted,
+            'top_waste_zones': [
+                {
+                    'zone': z['waste_zone'],
+                    'frequency': int(z['frequency']),
+                    'avg_score': float(z['avg_score'])
+                }
+                for z in top_zones
+            ],
+            'industry_breakdown': [
+                {
+                    'industry': i['industry'],
+                    'count': int(i['count']),
+                    'avg_score': float(i['avg_score'])
+                }
+                for i in industries
+            ],
+            'last_updated': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)))
